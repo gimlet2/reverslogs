@@ -5,6 +5,7 @@ import jdk.internal.org.objectweb.asm.ClassVisitor;
 import jdk.internal.org.objectweb.asm.MethodVisitor;
 import jdk.internal.org.objectweb.asm.Opcodes;
 import jdk.internal.org.objectweb.asm.Type;
+import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
 import java.lang.reflect.Method;
@@ -16,25 +17,26 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class Logger {
     // TODO add caching for methods by stack trace;
-
+    org.slf4j.Logger backLogger;
     private Class clazz;
 
     private static Map<String, List<LogEntity>> logStack = new HashMap<String, List<LogEntity>>();
 
     public static Logger logger(Class clazz) {
-        Logger logger = new Logger();
+        Logger logger = new Logger(clazz);
         logger.clazz = clazz;
         return logger;
     }
 
-    private Logger() {
+    private Logger(Class clazz) {
+        this.backLogger = LoggerFactory.getLogger(clazz);
         final Thread.UncaughtExceptionHandler uncaughtExceptionHandler = Thread.currentThread().getUncaughtExceptionHandler();
         Thread.UncaughtExceptionHandler eh = new LoggerExceptionHandler(uncaughtExceptionHandler);
 
         Thread.currentThread().setUncaughtExceptionHandler(eh);
     }
 
-    public static class LoggerExceptionHandler implements Thread.UncaughtExceptionHandler {
+    public class LoggerExceptionHandler implements Thread.UncaughtExceptionHandler {
 
         private Thread.UncaughtExceptionHandler uncaughtExceptionHandler;
 
@@ -49,15 +51,17 @@ public class Logger {
             StackTraceElement[] stackTrace = e.getStackTrace();
 
             Log log = getLog(stackTrace);
-            if(log == null) {
-                System.out.print("LOG NOT FOUND");
-                return;
-            }
-            List<LogEntity> logEntities = logStack.get(log.name());
-            for (LogEntity logEntity : logEntities) {
-                System.out.println(logEntity.toString());
-            }
+            if (log == null) {
+                e.printStackTrace();
+            } else {
+                List<LogEntity> logEntities = logStack.get(log.name());
+                LogLevel.FALLBACK.log(backLogger, new LogEntity("Fallback Logs start: ", LogLevel.FALLBACK));
 
+                for (LogEntity logEntity : logEntities) {
+                    LogLevel.FALLBACK.log(backLogger, logEntity);
+                }
+                logStack.remove(log.name());
+            }
             if (uncaughtExceptionHandler != null) {
                 uncaughtExceptionHandler.uncaughtException(t, e);
             }
@@ -72,10 +76,11 @@ public class Logger {
 
     public void addLogMessage(String message, LogLevel level) {
         Log log = getLog(Thread.currentThread().getStackTrace());
-        if(log == null) {
-            return;
-        }
-        if (log.fallback().compare(level) != 1) {
+        if (log == null) {
+            level.log(backLogger, new LogEntity(message, level));
+        } else if (log.minLevel().compare(level) != 1) {
+            level.log(backLogger, new LogEntity(message, level));
+        } else if (log.fallback().compare(level) != 1) {
             if (!logStack.containsKey(log.name())) {
                 logStack.put(log.name(), new ArrayList<LogEntity>());
             }
@@ -117,7 +122,7 @@ public class Logger {
         for (StackTraceElement stackTraceElement : stackTrace) {
             try {
                 Method method = getMethod(stackTraceElement);
-                if(method == null) {
+                if (method == null) {
                     return null;
                 }
                 Log annotation = method.getAnnotation(Log.class);
@@ -179,7 +184,8 @@ public class Logger {
         String methodDescriptor = methodDescriptorReference.get();
 
         if (methodDescriptor == null) {
-            throw new RuntimeException("Could not find line " + stackTraceLineNumber);
+//            throw new RuntimeException("Could not find line " + stackTraceLineNumber);
+            return null;
         }
 
         for (Method method : stackTraceClass.getDeclaredMethods()) {

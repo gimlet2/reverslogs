@@ -13,7 +13,7 @@ public class Example {
     @Test
     public void test() throws Exception {
         logger = Logger.logger(Example.class);
-//        logger.error("SOME ERROR");
+        logger.error("SOME ERROR");
         method1();
     }
 
@@ -30,6 +30,8 @@ public class Example {
     }
 
     public void method3() {
+        logger.debug("method3 debug - 1");
         logger.warn("method3");
+        logger.debug("method3 debug - 2");
     }
 }
