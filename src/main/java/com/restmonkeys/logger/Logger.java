@@ -152,7 +152,24 @@ public class Logger {
         logFallback(message, e);
     }
 
-    private static class LogEntity {
+    private void logFallback(String message, Throwable e) {
+        StackTraceElement[] stackTrace = e.getStackTrace();
+
+        Log log = getLog(stackTrace);
+        if (log == null) {
+            e.printStackTrace();
+        } else {
+            List<LogEntity> logEntities = logStack.get(log.name());
+            LogLevel.FALLBACK.log(backLogger, new LogEntity(message, LogLevel.FALLBACK));
+
+            for (LogEntity logEntity : logEntities) {
+                LogLevel.FALLBACK.log(backLogger, logEntity);
+            }
+            logStack.remove(log.name());
+        }
+    }
+
+    public static class LogEntity {
         private String message;
         private LogLevel level;
 
@@ -183,42 +200,6 @@ public class Logger {
             if (uncaughtExceptionHandler != null) {
                 uncaughtExceptionHandler.uncaughtException(t, e);
             }
-        }
-    }
-
-    private class LoggerExceptionHandler implements Thread.UncaughtExceptionHandler {
-
-        private Thread.UncaughtExceptionHandler uncaughtExceptionHandler;
-
-        public LoggerExceptionHandler(Thread.UncaughtExceptionHandler uncaughtExceptionHandler) {
-            if (uncaughtExceptionHandler != null && !(uncaughtExceptionHandler instanceof LoggerExceptionHandler)) {
-                this.uncaughtExceptionHandler = uncaughtExceptionHandler;
-            }
-        }
-
-        @Override
-        public void uncaughtException(Thread t, Throwable e) {
-            logFallback("Fallback Logs start: ", e);
-            if (uncaughtExceptionHandler != null) {
-                uncaughtExceptionHandler.uncaughtException(t, e);
-            }
-        }
-    }
-
-    private void logFallback(String message, Throwable e) {
-        StackTraceElement[] stackTrace = e.getStackTrace();
-
-        Log log = getLog(stackTrace);
-        if (log == null) {
-            e.printStackTrace();
-        } else {
-            List<LogEntity> logEntities = logStack.get(log.name());
-            LogLevel.FALLBACK.log(backLogger, new LogEntity(message, LogLevel.FALLBACK));
-
-            for (LogEntity logEntity : logEntities) {
-                LogLevel.FALLBACK.log(backLogger, logEntity);
-            }
-            logStack.remove(log.name());
         }
     }
 }
