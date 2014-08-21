@@ -20,7 +20,9 @@ public class Example {
     @Log(name = "Method1", minLevel = LogLevel.WARN, fallback = LogLevel.DEBUG)
     public void method1() throws Exception {
         logger.debug("method2 debug");
-        logger.info("method2 info");
+        for (int i = 0; i < 150; i++) {
+            logger.debug("method2 info i = " + i);
+        }
         method2();
     }
 

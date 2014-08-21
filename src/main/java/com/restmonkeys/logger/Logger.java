@@ -1,5 +1,7 @@
 package com.restmonkeys.logger;
 
+import com.restmonkeys.logger.collections.LimitedSizeList;
+import com.restmonkeys.logger.collections.LimitedSizeMap;
 import jdk.internal.org.objectweb.asm.ClassReader;
 import jdk.internal.org.objectweb.asm.ClassVisitor;
 import jdk.internal.org.objectweb.asm.MethodVisitor;
@@ -9,24 +11,16 @@ import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class Logger {
+    private static Map<String, List<LogEntity>> logStack = Collections.synchronizedMap(new LimitedSizeMap<String, List<LogEntity>>());
     // TODO add caching for methods by stack trace;
     org.slf4j.Logger backLogger;
     private Class clazz;
-
-    private static Map<String, List<LogEntity>> logStack = new HashMap<String, List<LogEntity>>();
-
-    public static Logger logger(Class clazz) {
-        Logger logger = new Logger(clazz);
-        logger.clazz = clazz;
-        return logger;
-    }
 
     private Logger(Class clazz) {
         this.backLogger = LoggerFactory.getLogger(clazz);
@@ -36,86 +30,10 @@ public class Logger {
         Thread.currentThread().setUncaughtExceptionHandler(eh);
     }
 
-    public class LoggerExceptionHandler implements Thread.UncaughtExceptionHandler {
-
-        private Thread.UncaughtExceptionHandler uncaughtExceptionHandler;
-
-        public LoggerExceptionHandler(Thread.UncaughtExceptionHandler uncaughtExceptionHandler) {
-            if (uncaughtExceptionHandler != null && !(uncaughtExceptionHandler instanceof LoggerExceptionHandler)) {
-                this.uncaughtExceptionHandler = uncaughtExceptionHandler;
-            }
-        }
-
-        @Override
-        public void uncaughtException(Thread t, Throwable e) {
-            StackTraceElement[] stackTrace = e.getStackTrace();
-
-            Log log = getLog(stackTrace);
-            if (log == null) {
-                e.printStackTrace();
-            } else {
-                List<LogEntity> logEntities = logStack.get(log.name());
-                LogLevel.FALLBACK.log(backLogger, new LogEntity("Fallback Logs start: ", LogLevel.FALLBACK));
-
-                for (LogEntity logEntity : logEntities) {
-                    LogLevel.FALLBACK.log(backLogger, logEntity);
-                }
-                logStack.remove(log.name());
-            }
-            if (uncaughtExceptionHandler != null) {
-                uncaughtExceptionHandler.uncaughtException(t, e);
-            }
-        }
-
-
-    }
-
-    public void info(String message) { // todo do not add if level less then fallback
-        addLogMessage(message, LogLevel.INFO);
-    }
-
-    public void addLogMessage(String message, LogLevel level) {
-        Log log = getLog(Thread.currentThread().getStackTrace());
-        if (log == null) {
-            level.log(backLogger, new LogEntity(message, level));
-        } else if (log.minLevel().compare(level) != 1) {
-            level.log(backLogger, new LogEntity(message, level));
-        } else if (log.fallback().compare(level) != 1) {
-            if (!logStack.containsKey(log.name())) {
-                logStack.put(log.name(), new ArrayList<LogEntity>());
-            }
-            logStack.get(log.name()).add(new LogEntity(message, level));
-        }
-    }
-
-    public void debug(String message) {
-        addLogMessage(message, LogLevel.DEBUG);
-
-    }
-
-    public void warn(String message) {
-        addLogMessage(message, LogLevel.WARN);
-
-    }
-
-    public void error(String message) {
-        addLogMessage(message, LogLevel.ERROR);
-
-    }
-
-    public static class LogEntity {
-        private String message;
-        private LogLevel level;
-
-        public LogEntity(String message, LogLevel level) {
-            this.message = message;
-            this.level = level;
-        }
-
-        @Override
-        public String toString() {
-            return level.name() + " " + message;
-        }
+    public static Logger logger(Class clazz) {
+        Logger logger = new Logger(clazz);
+        logger.clazz = clazz;
+        return logger;
     }
 
     private static Log getLog(StackTraceElement[] stackTrace) {
@@ -196,5 +114,85 @@ public class Logger {
 
 //        throw new RuntimeException("Could not find the calling method");
         return null;
+    }
+
+    public void info(String message) { // todo do not add if level less then fallback
+        addLogMessage(message, LogLevel.INFO);
+    }
+
+    public void addLogMessage(String message, LogLevel level) {
+        Log log = getLog(Thread.currentThread().getStackTrace());
+        if (log == null) {
+            level.log(backLogger, new LogEntity(message, level));
+        } else if (log.minLevel().compare(level) != 1) {
+            level.log(backLogger, new LogEntity(message, level));
+        } else if (log.fallback().compare(level) != 1) {
+            if (!logStack.containsKey(log.name())) {
+                logStack.put(log.name(), Collections.synchronizedList(new LimitedSizeList<LogEntity>()));
+            }
+            logStack.get(log.name()).add(new LogEntity(message, level));
+        }
+    }
+
+    public void debug(String message) {
+        addLogMessage(message, LogLevel.DEBUG);
+
+    }
+
+    public void warn(String message) {
+        addLogMessage(message, LogLevel.WARN);
+
+    }
+
+    public void error(String message) {
+        addLogMessage(message, LogLevel.ERROR);
+
+    }
+
+    public static class LogEntity {
+        private String message;
+        private LogLevel level;
+
+        public LogEntity(String message, LogLevel level) {
+            this.message = message;
+            this.level = level;
+        }
+
+        @Override
+        public String toString() {
+            return level.name() + " " + message;
+        }
+    }
+
+    public class LoggerExceptionHandler implements Thread.UncaughtExceptionHandler {
+
+        private Thread.UncaughtExceptionHandler uncaughtExceptionHandler;
+
+        public LoggerExceptionHandler(Thread.UncaughtExceptionHandler uncaughtExceptionHandler) {
+            if (uncaughtExceptionHandler != null && !(uncaughtExceptionHandler instanceof LoggerExceptionHandler)) {
+                this.uncaughtExceptionHandler = uncaughtExceptionHandler;
+            }
+        }
+
+        @Override
+        public void uncaughtException(Thread t, Throwable e) {
+            StackTraceElement[] stackTrace = e.getStackTrace();
+
+            Log log = getLog(stackTrace);
+            if (log == null) {
+                e.printStackTrace();
+            } else {
+                List<LogEntity> logEntities = logStack.get(log.name());
+                LogLevel.FALLBACK.log(backLogger, new LogEntity("Fallback Logs start: ", LogLevel.FALLBACK));
+
+                for (LogEntity logEntity : logEntities) {
+                    LogLevel.FALLBACK.log(backLogger, logEntity);
+                }
+                logStack.remove(log.name());
+            }
+            if (uncaughtExceptionHandler != null) {
+                uncaughtExceptionHandler.uncaughtException(t, e);
+            }
+        }
     }
 }
