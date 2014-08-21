@@ -29,6 +29,11 @@ public class Logger {
         Thread.currentThread().setUncaughtExceptionHandler(eh);
     }
 
+    /**
+     * Factory method to get Logger instance
+     *
+     * @param clazz Type of object that will use logger
+     */
     public static Logger logger(Class clazz) {
         Logger logger = new Logger(clazz);
         logger.clazz = clazz;
@@ -130,38 +135,88 @@ public class Logger {
         }
     }
 
+    /**
+     * Log message with info level
+     *
+     * @param message String with message
+     */
     public void info(String message) {
         addLogMessage(message, LogLevel.INFO, null);
     }
 
+    /**
+     * Log message with info level
+     *
+     * @param message String with message
+     * @param e       passed exception
+     */
     public void info(String message, Throwable e) {
         addLogMessage(message, LogLevel.INFO, e);
     }
 
+    /**
+     * Log message with debug level
+     *
+     * @param message String with message
+     */
     public void debug(String message) {
         addLogMessage(message, LogLevel.DEBUG, null);
     }
 
+    /**
+     * Log message with debug level
+     *
+     * @param message String with message
+     * @param e       passed exception
+     */
     public void debug(String message, Throwable e) {
         addLogMessage(message, LogLevel.DEBUG, e);
     }
 
+    /**
+     * Log message with warn level
+     *
+     * @param message String with message
+     */
     public void warn(String message) {
         addLogMessage(message, LogLevel.WARN, null);
     }
 
+    /**
+     * Log message with warn level
+     *
+     * @param message String with message
+     * @param e       passed exception
+     */
     public void warn(String message, Throwable e) {
         addLogMessage(message, LogLevel.WARN, e);
     }
 
+    /**
+     * Log message with error level
+     *
+     * @param message String with message
+     */
     public void error(String message) {
         addLogMessage(message, LogLevel.ERROR, null);
     }
 
+    /**
+     * Log message with error level
+     *
+     * @param message String with message
+     * @param e       passed exception
+     */
     public void error(String message, Throwable e) {
         addLogMessage(message, LogLevel.ERROR, e);
     }
 
+    /**
+     * This method invokes manual flushing fallback logs to file
+     *
+     * @param message String with message
+     * @param e       passed exception
+     */
     public void fallback(String message, Throwable e) {
         logFallback(message, e);
     }
