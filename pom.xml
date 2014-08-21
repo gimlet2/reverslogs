@@ -5,10 +5,10 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.restmonkeys</groupId>
     <artifactId>logger</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
-    <name>ReversLogs</name>
+    <name>com.restmonkeys:logger</name>
     <description>This ReversLogs project was created to help to collect more useful information from your application
         logs.
     </description>
@@ -22,7 +22,9 @@
 
     <url>https://github.com/gimlet2/reverslogs</url>
     <scm>
-        <url>https://github.com/gimlet2/reverslogs.git</url>
+        <connection>scm:git:git@github.com:gimlet2/reverslogs.git</connection>
+        <developerConnection>scm:git:git@github.com:gimlet2/reverslogs.git</developerConnection>
+        <url>git@github.com:gimlet2/reverslogs.git</url>
     </scm>
     <developers>
         <developer>
@@ -38,11 +40,42 @@
             <version>1.7.7</version>
         </dependency>
         <dependency>
-            <groupId>org.slf4j</groupId>
+            <groupId>org.ow2.asm</groupId>
+            <artifactId>asm</artifactId>
+            <version>5.0.3</version>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit-dep</artifactId>
+            <version>4.11</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+        <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
             <version>1.7.7</version>
             <scope>test</scope>
         </dependency>
 
     </dependencies>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.1</version>
+                <configuration>
+                    <source>1.8</source>
+                    <target>1.8</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>2.9.1</version>
+                <configuration>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>
