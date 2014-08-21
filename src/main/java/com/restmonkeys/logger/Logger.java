@@ -116,12 +116,12 @@ public class Logger {
     }
 
 
-    private void addLogMessage(String message, LogLevel level) {
+    private void addLogMessage(String message, LogLevel level, Throwable e) {
         Log log = getLog(Thread.currentThread().getStackTrace());
         if (log == null) {
-            level.log(backLogger, new LogEntity(message, level));
+            level.log(backLogger, new LogEntity(message, level), e);
         } else if (log.minLevel().compare(level) != 1) {
-            level.log(backLogger, new LogEntity(message, level));
+            level.log(backLogger, new LogEntity(message, level), e);
         } else if (log.fallback().compare(level) != 1) {
             if (!logStack.containsKey(log.name())) {
                 logStack.put(log.name(), Collections.synchronizedList(new LimitedSizeList<LogEntity>()));
@@ -131,21 +131,35 @@ public class Logger {
     }
 
     public void info(String message) {
-        addLogMessage(message, LogLevel.INFO);
+        addLogMessage(message, LogLevel.INFO, null);
+    }
+
+    public void info(String message, Throwable e) {
+        addLogMessage(message, LogLevel.INFO, e);
     }
 
     public void debug(String message) {
-        addLogMessage(message, LogLevel.DEBUG);
+        addLogMessage(message, LogLevel.DEBUG, null);
+    }
 
+    public void debug(String message, Throwable e) {
+        addLogMessage(message, LogLevel.DEBUG, e);
     }
 
     public void warn(String message) {
-        addLogMessage(message, LogLevel.WARN);
+        addLogMessage(message, LogLevel.WARN, null);
+    }
 
+    public void warn(String message, Throwable e) {
+        addLogMessage(message, LogLevel.WARN, e);
     }
 
     public void error(String message) {
-        addLogMessage(message, LogLevel.ERROR);
+        addLogMessage(message, LogLevel.ERROR, null);
+    }
+
+    public void error(String message, Throwable e) {
+        addLogMessage(message, LogLevel.ERROR, e);
     }
 
     public void fallback(String message, Throwable e) {
@@ -160,10 +174,10 @@ public class Logger {
             e.printStackTrace();
         } else {
             List<LogEntity> logEntities = logStack.get(log.name());
-            LogLevel.FALLBACK.log(backLogger, new LogEntity(message, LogLevel.FALLBACK));
+            LogLevel.FALLBACK.log(backLogger, new LogEntity(message, LogLevel.FALLBACK), null);
 
             for (LogEntity logEntity : logEntities) {
-                LogLevel.FALLBACK.log(backLogger, logEntity);
+                LogLevel.FALLBACK.log(backLogger, logEntity, null);
             }
             logStack.remove(log.name());
         }
