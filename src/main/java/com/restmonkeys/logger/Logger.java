@@ -2,11 +2,11 @@ package com.restmonkeys.logger;
 
 import com.restmonkeys.logger.collections.LimitedSizeList;
 import com.restmonkeys.logger.collections.LimitedSizeMap;
-import jdk.internal.org.objectweb.asm.ClassReader;
-import jdk.internal.org.objectweb.asm.ClassVisitor;
-import jdk.internal.org.objectweb.asm.MethodVisitor;
-import jdk.internal.org.objectweb.asm.Opcodes;
-import jdk.internal.org.objectweb.asm.Type;
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
 import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
@@ -87,7 +87,7 @@ public class Logger {
                             return new MethodVisitor(Opcodes.ASM5) {
 
                                 @Override
-                                public void visitLineNumber(int i, jdk.internal.org.objectweb.asm.Label label) {
+                                public void visitLineNumber(int i, org.objectweb.asm.Label label) {
                                     if (i == stackTraceLineNumber) {
                                         methodDescriptorReference.set(desc);
                                     }
