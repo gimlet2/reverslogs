@@ -28,7 +28,11 @@ public class Example {
 
     public void method2() throws Exception {
         method3();
-        throw new Exception("a");
+        try {
+            throw new Exception("a");
+        } catch (Exception e) {
+            logger.fallback("Fallback in method2", e);
+        }
     }
 
     public void method3() {
