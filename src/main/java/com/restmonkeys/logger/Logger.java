@@ -215,19 +215,26 @@ public class Logger {
      * This method invokes manual flushing fallback logs to file
      *
      * @param message String with message
-     * @param e       passed exception
      */
+    public void fallback(String message) {
+        logFallback(message, null);
+    }
+
     public void fallback(String message, Throwable e) {
         logFallback(message, e);
     }
 
     private void logFallback(String message, Throwable e) {
-        StackTraceElement[] stackTrace = e.getStackTrace();
-
-        Log log = getLog(stackTrace);
-        if (log == null) {
-            e.printStackTrace();
+        StackTraceElement[] stackTrace;
+        if (e != null) {
+            stackTrace = e.getStackTrace();
         } else {
+            stackTrace = Thread.currentThread().getStackTrace();
+        }
+        Log log = getLog(stackTrace);
+        if (log == null && e != null) {
+            e.printStackTrace();
+        } else if (log != null) {
             List<LogEntity> logEntities = logStack.get(log.name());
             LogLevel.FALLBACK.log(backLogger, new LogEntity(message, LogLevel.FALLBACK), null);
 
