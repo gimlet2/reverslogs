@@ -17,12 +17,15 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class Logger {
-    private static Map<String, List<LogEntity>> logStack = Collections.synchronizedMap(new LimitedSizeMap<String, List<LogEntity>>());
-    // TODO add caching for methods by stack trace;
+    private static Map<String, List<LogEntity>> logStack = Collections.synchronizedMap(new LimitedSizeMap<>());
+    private static Map<StackTraceElement, Log> logCache = Collections.synchronizedMap(new LimitedSizeMap<>());
+    private static org.slf4j.Logger loggersLogger = LoggerFactory.getLogger(Logger.class);
+
     org.slf4j.Logger backLogger;
     private Class clazz;
 
     private Logger(Class clazz) {
+        this.clazz = clazz;
         this.backLogger = LoggerFactory.getLogger(clazz);
         final Thread.UncaughtExceptionHandler uncaughtExceptionHandler = Thread.currentThread().getUncaughtExceptionHandler();
         Thread.UncaughtExceptionHandler eh = new LoggerExceptionHandler(uncaughtExceptionHandler);
@@ -35,13 +38,15 @@ public class Logger {
      * @param clazz Type of object that will use logger
      */
     public static Logger logger(Class clazz) {
-        Logger logger = new Logger(clazz);
-        logger.clazz = clazz;
-        return logger;
+        return new Logger(clazz);
     }
 
     private static Log getLog(StackTraceElement[] stackTrace) {
         for (StackTraceElement stackTraceElement : stackTrace) {
+            Log log = logCache.get(stackTraceElement);
+            if (log != null) {
+                return log;
+            }
             try {
                 Method method = getMethod(stackTraceElement);
                 if (method == null) {
@@ -49,10 +54,11 @@ public class Logger {
                 }
                 Log annotation = method.getAnnotation(Log.class);
                 if (annotation != null) {
+                    logCache.put(stackTraceElement, annotation);
                     return annotation;
                 }
             } catch (Exception e1) {
-                e1.printStackTrace();
+                loggersLogger.error("Unexpected error happened", e1);
             }
         }
         return null;
@@ -64,9 +70,7 @@ public class Logger {
         final int stackTraceLineNumber = stackTraceElement.getLineNumber();
         Class<?> stackTraceClass = Class.forName(stackTraceClassName);
 
-        // I am only using AtomicReference as a container to dump a String into, feel free to ignore it for now
-        final AtomicReference<String> methodDescriptorReference = new AtomicReference<String>();
-
+        final AtomicReference<String> methodDescriptorReference = new AtomicReference<>();
         String classFileResourceName = "/" + stackTraceClassName.replaceAll("\\.", "/") + ".class";
         InputStream classFileStream = stackTraceClass.getResourceAsStream(classFileResourceName);
 
@@ -104,19 +108,14 @@ public class Logger {
         }
 
         String methodDescriptor = methodDescriptorReference.get();
-
         if (methodDescriptor == null) {
-//            throw new RuntimeException("Could not find line " + stackTraceLineNumber);
             return null;
         }
-
         for (Method method : stackTraceClass.getDeclaredMethods()) {
             if (stackTraceMethodName.equals(method.getName()) && methodDescriptor.equals(Type.getMethodDescriptor(method))) {
                 return method;
             }
         }
-
-//        throw new RuntimeException("Could not find the calling method");
         return null;
     }
 
@@ -129,7 +128,7 @@ public class Logger {
             level.log(backLogger, new LogEntity(message, level), e);
         } else if (log.fallback().compare(level) != 1) {
             if (!logStack.containsKey(log.name())) {
-                logStack.put(log.name(), Collections.synchronizedList(new LimitedSizeList<LogEntity>()));
+                logStack.put(log.name(), Collections.synchronizedList(new LimitedSizeList<>()));
             }
             logStack.get(log.name()).add(new LogEntity(message, level));
         }
@@ -233,7 +232,7 @@ public class Logger {
         }
         Log log = getLog(stackTrace);
         if (log == null && e != null) {
-            e.printStackTrace();
+            loggersLogger.error("Logger not found but exception happened", e);
         } else if (log != null) {
             List<LogEntity> logEntities = logStack.get(log.name());
             LogLevel.FALLBACK.log(backLogger, new LogEntity(message, LogLevel.FALLBACK), null);
